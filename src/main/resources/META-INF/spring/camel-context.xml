@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:broker="http://activemq.apache.org/schema/core"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="
+       http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd
+       http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee.xsd
+       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://activemq.apache.org/schema/core http://activemq.apache.org/schema/core/activemq-core.xsd
+       http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
+       ">
+
+	<bean id="jndiTemplate" class="org.springframework.jndi.JndiTemplate">
+        <property name="environment">
+            <props>
+                <prop key="java.naming.factory.initial">com.ibm.websphere.naming.WsnInitialContextFactory</prop>
+                <prop key="java.naming.provider.url">iiop://127.0.0.1:2809</prop>
+                <prop key="org.omg.CORBA.ORBClass">com.ibm.CORBA.iiop.ORB</prop> 
+            </props>
+        </property>
+    </bean>
+    
+     <bean id="queueConnectionFactory" class="org.springframework.jndi.JndiObjectFactoryBean">
+        <property name="jndiTemplate" ref="jndiTemplate"/>
+        <property name="jndiName" value="jms/MessageOrdersQueueFactory"/>
+    </bean>
+
+	<bean id="wjms" class="org.apache.camel.component.jms.JmsComponent">
+		<property name="connectionFactory" ref="queueConnectionFactory">
+			
+		</property>
+		<property name="destinationResolver">
+			<bean
+				class="org.springframework.jms.support.destination.JndiDestinationResolver">
+				<property name="jndiEnvironment" ref="env" />
+			</bean>
+		</property>
+	</bean>
+
+	<util:properties id="env">
+		<prop key="java.naming.factory.initial">com.ibm.websphere.naming.WsnInitialContextFactory</prop>
+		<prop key="java.naming.provider.url">iiop://127.0.0.1:2809</prop>
+		<prop key="org.omg.CORBA.ORBClass">com.ibm.CORBA.iiop.ORB</prop> 
+	</util:properties>
+	
+	<camelContext xmlns="http://camel.apache.org/schema/spring">
+	    <route>
+	      <from uri="file:src/data?noop=true"/>
+	      <to uri="wjms:jms/MessageOrderErrorQueue"/> 
+	    </route>
+	    <route>
+	      <from uri="wjms:jms/MessageOrderErrorQueue"/> 
+	      <to uri="file:src/data2?noop=true"/>
+	    </route>
+	 </camelContext>
+</beans>
+
+
+
